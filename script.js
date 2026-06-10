@@ -8,12 +8,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+  apiKey: "AIzaSyAEfDeKEZ3l0XWVNTfy4pZMcRuE8KvwNTY",
+  authDomain: "troop-equipment.firebaseapp.com",
+  projectId: "troop-equipment",
+  storageBucket: "troop-equipment.firebasestorage.app",
+  messagingSenderId: "175531346010",
+  appId: "1:175531346010:web:b8ff0a82e05ae8cebc3063"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -135,11 +135,10 @@ checkoutBtn.addEventListener("click", async () => {
 
   try {
     await addDoc(collection(db, "equipment"), {
-      name,
-      type,
-      person,
-      dateOut: new Date().toISOString()
-    });
+    name, type, person,
+     dateOut: new Date().toISOString(),
+     secret: "BePrepared"
+});
     equipNameEl.value  = "";
     equipTypeEl.value  = "";
     personNameEl.value = "";
