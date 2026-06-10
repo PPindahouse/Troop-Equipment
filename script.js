@@ -8,7 +8,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAEfDeKEZ3l0XWVNTfy4pZMcRuE8KvwNTY",
+  apiKey: process.env.API_KEY,
   authDomain: "troop-equipment.firebaseapp.com",
   projectId: "troop-equipment",
   storageBucket: "troop-equipment.firebasestorage.app",
