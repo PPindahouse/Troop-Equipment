@@ -32,7 +32,6 @@ let searchFilter = "";
 const adminBtn      = document.getElementById("adminBtn");
 const adminNav      = document.getElementById("adminNav");
 const adminPanels   = document.getElementById("adminPanels");
-const lockBtn       = document.getElementById("lockBtn");
 const tabBtns       = document.querySelectorAll(".tab-btn");
 const panels        = { checkout: document.getElementById("panel-checkout"),
                         checkin:  document.getElementById("panel-checkin") };
@@ -87,19 +86,6 @@ function unlock() {
     codeInput.focus();
   }
 }
-
-// ── LOCK ─────────────────────────────────────────────────────────────────────
-lockBtn.addEventListener("click", () => {
-  isAdmin = false;
-  adminNav.classList.add("hidden");
-  adminPanels.classList.add("hidden");
-  adminBtn.classList.remove("hidden");
-  actionCol.classList.add("hidden");
-  searchFilter = "";
-  searchInput.value = "";
-  renderTable();
-});
-
 // ── TAB SWITCHING ────────────────────────────────────────────────────────────
 tabBtns.forEach(btn => {
   btn.addEventListener("click", () => {
