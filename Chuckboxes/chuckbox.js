@@ -303,12 +303,12 @@ function hideTooltip() {
   tooltip.classList.remove("visible");
 }
 
-// ── PATROL LEADER LOG (shared across all chuckboxes) ─────────────────────
+// ── PATROL LEADER LOG (shared outings, per-chuckbox leaders) ─────────────
 // Firestore: collection "outings" — each doc: { outing: "Fall Campout", leaders: { Cobra: "...", Egg: "...", ... }, order: number }
 const outingsCol = collection(db, "outings");
 
 onSnapshot(outingsCol, (snap) => {
-  outingsData = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  outingsData = snap.docs.map(d => ({ id: d.id, ...normalizeOutingDoc(d.data()) }))
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   renderPatrolLog();
 }, (err) => {
@@ -329,7 +329,7 @@ function renderPatrolLog() {
   }
 
   visibleOutings.forEach(o => {
-    const leaderName = (o.leaders && o.leaders[currentChuckbox]) || "";
+    const leaderName = getLeaderForChuckbox(o, currentChuckbox);
     const tr = document.createElement("tr");
 
     if (isAdmin) {
@@ -365,6 +365,23 @@ function renderPatrolLog() {
 async function updateOuting(id, partial) {
   const ref = doc(db, "outings", id);
   await setDoc(ref, { ...partial, secret: SECRET }, { merge: true });
+}
+
+function normalizeOutingDoc(data) {
+  const leaders = {};
+  CHUCKBOXES.forEach(chuckbox => {
+    const value = data?.leaders?.[chuckbox];
+    leaders[chuckbox] = typeof value === "string" ? value : "";
+  });
+
+  return {
+    ...data,
+    leaders
+  };
+}
+
+function getLeaderForChuckbox(outing, chuckbox) {
+  return typeof outing?.leaders?.[chuckbox] === "string" ? outing.leaders[chuckbox] : "";
 }
 
 addOutingBtn.addEventListener("click", async () => {
