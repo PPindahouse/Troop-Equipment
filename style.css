@@ -435,3 +435,31 @@ tr.warn-red .date-cell {
   .main-content { padding: 18px 12px 40px; }
   .modal { padding: 28px 18px; }
 }
+/* ── SITE TABS ─────────────────────────────────── */
+.site-tabs {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  gap: 4px;
+  padding-top: 2px;
+}
+.site-tab {
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+  color: var(--green-sage);
+  padding: 9px 18px 11px;
+  border-radius: 6px 6px 0 0;
+  border-bottom: 3px solid transparent;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.site-tab:hover {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+}
+.site-tab.active {
+  color: #fff;
+  border-bottom-color: var(--khaki);
+}
