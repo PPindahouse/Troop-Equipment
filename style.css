@@ -469,15 +469,17 @@ tr.warn-red .date-cell {
 
 /* ── Status colors ─────────────────────────────── */
 :root {
-  --status-checked:      #4A7A28;  /* green */
+  --status-neutral:      #9b9b9b;  /* gray */
+  --status-neutral-bg:   #F5F5F5;
+  --status-checked:      #478719;  /* green */
   --status-checked-bg:   #EAF3E2;
-  --status-low:          #8FAE6F;  /* pale green */
+  --status-low:          #a4cd7b;  /* pale green */
   --status-low-bg:       #F1F6EA;
-  --status-empty:        #C99A1E;  /* yellow */
+  --status-empty:        #f0b40f;  /* yellow */
   --status-empty-bg:     #FFF6DE;
-  --status-damaged:      #B8702A;  /* burnt orange-brown */
+  --status-damaged:      #b5681c;  /* burnt orange-brown */
   --status-damaged-bg:   #FBEEE0;
-  --status-missing:      #C0392B;  /* red */
+  --status-missing:      #ca1e0b;  /* red */
   --status-missing-bg:   #FBE9E7;
 }
 
@@ -637,6 +639,9 @@ tr.warn-red .date-cell {
 }
 
 /* Status color states */
+.item-btn.status-neutral  { background: var(--status-neutral-bg);  border-color: var(--status-neutral); }
+.item-btn.status-neutral  .item-btn-status { color: var(--status-neutral); }
+
 .item-btn.status-checked  { background: var(--status-checked-bg);  border-color: var(--status-checked); }
 .item-btn.status-checked  .item-btn-status { color: var(--status-checked); }
 
@@ -786,6 +791,78 @@ tr.warn-red .date-cell {
   cursor: pointer;
 }
 .patrol-log-add button:hover { background: var(--green-mid); }
+
+/* ── Admin toolbar (check-in mode) ───────────────── */
+.admin-label-and-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+.admin-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.admin-toolbar button {
+  flex: 0 1 auto;
+}
+#saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Patrol Leader Logger (check-in mode UI) ────── */
+.patrol-logger {
+  background: var(--parchment-2);
+  border-left: 4px solid var(--green-dark);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border-radius: var(--radius);
+}
+.patrol-logger h3 {
+  font-family: 'Oswald', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.patrol-logger-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.outing-select-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.outing-select-group select,
+.outing-select-group input {
+  flex: 1;
+  min-width: 120px;
+}
+.or-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Item category headers (in grid) ────────────── */
+.item-category-header {
+  grid-column: 1 / -1;
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--green-dark);
+  border-bottom: 2px solid var(--green-dark);
+  padding: 12px 0 8px 0;
+  margin-top: 8px;
+}
 
 @media (max-width: 600px) {
   .item-grid { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); }

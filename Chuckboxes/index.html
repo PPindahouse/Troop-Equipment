@@ -20,7 +20,7 @@
           <p class="troop-sub">Troop 1094</p>
         </div>
       </div>
-      <button id="adminBtn" class="btn-admin">Add / Modify List</button>
+      <button id="adminBtn" class="btn-admin">Check Items</button>
     </div>
 
     <!-- SITE TABS -->
@@ -33,7 +33,13 @@
   <!-- ADMIN NAVBAR (hidden until unlocked) -->
   <nav id="adminNav" class="admin-nav hidden">
     <div class="admin-nav-inner">
-      <span class="admin-label">⚙ Admin Mode — tap any item to cycle its status</span>
+      <div class="admin-label-and-buttons">
+        <span class="admin-label">⚙ Check-In Mode</span>
+        <div class="admin-toolbar">
+          <button id="saveBtn" class="btn-primary" disabled>Save Check-In</button>
+          <button id="modifyLogBtn" class="btn-secondary">Modify Log</button>
+        </div>
+      </div>
     </div>
   </nav>
 
@@ -50,6 +56,27 @@
       </select>
     </div>
     <span id="lastUpdated" class="last-updated">Last updated: —</span>
+  </div>
+
+  <!-- PATROL LEADER LOGGING (admin check-in mode only) -->
+  <div id="patrolLoggerUI" class="patrol-logger hidden">
+    <h3>Patrol Leader for this Outing</h3>
+    <div class="patrol-logger-form">
+      <div class="form-group">
+        <label for="patrolLeaderInput">Patrol Leader Name</label>
+        <input type="text" id="patrolLeaderInput" placeholder="Enter patrol leader name" />
+      </div>
+      <div class="form-group">
+        <label for="outingSelect">Outing</label>
+        <div class="outing-select-group">
+          <select id="outingSelect">
+            <option value="">— Select Recent Outing —</option>
+          </select>
+          <span class="or-text">or</span>
+          <input type="text" id="newOutingInput" placeholder="Create new outing" />
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- COMMENT BOX (public, only shown when content exists) -->
@@ -69,7 +96,7 @@
   <!-- MAIN LAYOUT: items + patrol log -->
   <div class="chuckbox-layout">
 
-    <!-- ITEM GRID -->
+    <!-- ITEM GRID WITH CATEGORIES -->
     <section>
       <h2 class="section-label">Box Contents</h2>
       <div id="itemGrid" class="item-grid"></div>
@@ -94,7 +121,6 @@
           <input type="text" id="newLeader" placeholder="Patrol leader name" />
           <button id="addOutingBtn">Add</button>
         </div>
-        <p class="patrol-log-note">Outings are shared across all chuckboxes. Each chuckbox has its own patrol leader entry, and the public view only shows outings when the selected box has a leader assigned.</p>
       </div>
     </section>
 

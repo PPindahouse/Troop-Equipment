@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import {
-  CHUCKBOXES, ITEM_DIRECTORY, STATUS_META,
+  CHUCKBOXES, ITEM_DIRECTORY, STATUS_META, CATEGORY_DISPLAY,
   itemBelongsTo, getCycleFor, missingLabel
 } from "./chuckboxData.js";
 
@@ -25,17 +25,26 @@ const SECRET = "BePrepared";
 
 // ── STATE ─────────────────────────────────────────────────────────────────
 let isAdmin = false;
+let isCheckingIn = false;                    // turn-based check-in mode active
 let currentChuckbox = "Cobra";
-let chuckboxDocData = null;   // live data for the currently selected chuckbox
-let outingsData = [];         // shared across all chuckboxes: [{id, outing, leaders:{Cobra:"", Egg:"", ...}}]
+let chuckboxDocData = null;
+let outingsData = [];
 let unsubChuckbox = null;
 let pendingDeleteId = null;
 let holdTimer = null;
 let holdFiredAsTooltip = false;
 
+// ── CHECK-IN STATE (local, not yet persisted) ────────────────────────────
+let localItemChanges = {};                   // {itemName: {status, missingCount}, ...}
+let localPatrolLeader = "";                  // patrol leader for current chuckbox
+let localOuting = null;                      // {id, name} or null for new outing
+let isModifyingLog = false;                  // modify log mode active
+
 // ── DOM ───────────────────────────────────────────────────────────────────
 const adminBtn       = document.getElementById("adminBtn");
 const adminNav       = document.getElementById("adminNav");
+const saveBtn        = document.getElementById("saveBtn");
+const modifyLogBtn   = document.getElementById("modifyLogBtn");
 const chuckboxSelect = document.getElementById("chuckboxSelect");
 const lastUpdatedEl  = document.getElementById("lastUpdated");
 const commentBox     = document.getElementById("commentBox");
@@ -45,12 +54,14 @@ const commentInput   = document.getElementById("commentInput");
 const itemGrid       = document.getElementById("itemGrid");
 const tooltip        = document.getElementById("itemTooltip");
 
+const patrolLoggerUI = document.getElementById("patrolLoggerUI");
+const patrolLeaderInput = document.getElementById("patrolLeaderInput");
+const outingSelect   = document.getElementById("outingSelect");
+const newOutingInput = document.getElementById("newOutingInput");
+
 const patrolLogBody  = document.getElementById("patrolLogBody");
 const patrolLogAdd   = document.getElementById("patrolLogAdd");
 const plActionHead   = document.getElementById("plActionHead");
-const newOutingEl    = document.getElementById("newOuting");
-const newLeaderEl    = document.getElementById("newLeader");
-const addOutingBtn   = document.getElementById("addOutingBtn");
 
 const modalOverlay   = document.getElementById("modalOverlay");
 const codeInput      = document.getElementById("codeInput");
@@ -73,6 +84,7 @@ currentChuckbox = chuckboxFromHash();
 chuckboxSelect.value = currentChuckbox;
 
 window.addEventListener("hashchange", () => {
+  if (isCheckingIn) return; // locked during check-in
   const fromHash = chuckboxFromHash();
   if (fromHash !== currentChuckbox) {
     currentChuckbox = fromHash;
@@ -82,6 +94,10 @@ window.addEventListener("hashchange", () => {
 });
 
 chuckboxSelect.addEventListener("change", () => {
+  if (isCheckingIn) {
+    chuckboxSelect.value = currentChuckbox; // revert
+    return;
+  }
   currentChuckbox = chuckboxSelect.value;
   history.replaceState(null, "", "#" + currentChuckbox.toLowerCase());
   subscribeToChuckbox();
@@ -101,19 +117,132 @@ codeInput.addEventListener("keydown", e => { if (e.key === "Enter") unlock(); })
 function unlock() {
   if (codeInput.value === SECRET) {
     isAdmin = true;
+    isCheckingIn = true;
+    localItemChanges = {};
+    localPatrolLeader = "";
+    localOuting = null;
+    
     modalOverlay.classList.add("hidden");
     adminBtn.classList.add("hidden");
     adminNav.classList.remove("hidden");
+    chuckboxSelect.disabled = true;
+    patrolLoggerUI.classList.remove("hidden");
+    saveBtn.disabled = true;
+    
     plActionHead.classList.remove("hidden");
-    patrolLogAdd.classList.remove("hidden");
+    patrolLogAdd.classList.add("hidden");
+    
     renderComment();
     renderItems();
     renderPatrolLog();
+    populateOutingSelect();
   } else {
     codeError.classList.remove("hidden");
     codeInput.value = "";
     codeInput.focus();
   }
+}
+
+// ── SAVE CHECK-IN ─────────────────────────────────────────────────────────
+saveBtn.addEventListener("click", async () => {
+  if (!validateAllItemsAssigned()) {
+    alert("Please assign a status to all items before saving.");
+    return;
+  }
+  
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving...";
+  
+  try {
+    // Write item statuses to database
+    const newStatuses = {
+      ...(chuckboxDocData.statuses || {}),
+      ...localItemChanges
+    };
+    await saveChuckboxField({ statuses: newStatuses });
+    
+    // Write patrol leader if provided
+    if (localPatrolLeader.trim() || localOuting) {
+      const outingName = localOuting?.name || newOutingInput.value.trim();
+      if (outingName && localPatrolLeader.trim()) {
+        if (localOuting?.id) {
+          // Update existing outing
+          const leaders = { ...(localOuting.leaders || {}), [currentChuckbox]: localPatrolLeader };
+          await updateOuting(localOuting.id, { leaders });
+        } else {
+          // Create new outing
+          await createNewOuting(outingName, localPatrolLeader);
+        }
+      }
+    }
+    
+    // Reset check-in state
+    isCheckingIn = false;
+    isAdmin = false;
+    localItemChanges = {};
+    localPatrolLeader = "";
+    localOuting = null;
+    isModifyingLog = false;
+    
+    // Reset UI
+    adminBtn.classList.remove("hidden");
+    adminNav.classList.add("hidden");
+    chuckboxSelect.disabled = false;
+    patrolLoggerUI.classList.add("hidden");
+    patrolLogAdd.classList.remove("hidden");
+    
+    saveBtn.textContent = "Save Check-In";
+    
+    renderItems();
+    renderPatrolLog();
+  } catch (err) {
+    alert("Error saving check-in. See console.");
+    console.error(err);
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Save Check-In";
+  }
+}
+
+);
+
+function validateAllItemsAssigned() {
+  const itemsForBox = ITEM_DIRECTORY.filter(it => itemBelongsTo(it, currentChuckbox));
+  for (const item of itemsForBox) {
+    const status = localItemChanges[item.name]?.status ?? chuckboxDocData?.statuses?.[item.name]?.status;
+    if (status === "neutral" || !status) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// ── MODIFY LOG MODE ──────────────────────────────────────────────────────
+modifyLogBtn.addEventListener("click", () => {
+  isModifyingLog = !isModifyingLog;
+  modifyLogBtn.textContent = isModifyingLog ? "Done Modifying" : "Modify Log";
+  renderPatrolLog();
+});
+
+// ── POPULATE OUTING SELECT ───────────────────────────────────────────────
+function populateOutingSelect() {
+  outingSelect.innerHTML = '<option value="">\u2014 Select Recent Outing \u2014</option>';
+  outingsData.forEach(o => {
+    const opt = document.createElement("option");
+    opt.value = o.id;
+    opt.textContent = o.outing;
+    outingSelect.appendChild(opt);
+  });
+  
+  outingSelect.addEventListener("change", () => {
+    if (outingSelect.value) {
+      localOuting = outingsData.find(o => o.id === outingSelect.value) || null;
+      newOutingInput.value = localOuting?.outing || "";
+      patrolLeaderInput.focus();
+    } else {
+      localOuting = null;
+      newOutingInput.value = "";
+    }
+  });
 }
 
 // ── FIRESTORE: CHUCKBOX DOC ──────────────────────────────────────────────
@@ -124,7 +253,6 @@ function subscribeToChuckbox() {
 
   unsubChuckbox = onSnapshot(ref, async (snap) => {
     if (!snap.exists()) {
-      // Initialize a blank doc so the first save has something to merge into
       chuckboxDocData = { statuses: {}, comment: "", updatedAt: null };
     } else {
       chuckboxDocData = snap.data();
@@ -144,7 +272,7 @@ async function saveChuckboxField(partialData) {
     ...chuckboxDocData,
     ...partialData,
     updatedAt: new Date().toISOString(),
-    secret: SECRET // required by Firestore security rules on write
+    secret: SECRET
   };
   await setDoc(ref, updated, { merge: true });
 }
@@ -166,8 +294,7 @@ function renderComment() {
 
   if (isAdmin) {
     commentBox.classList.add("hidden");
-    commentEditor.classList.remove("hidden");
-    if (document.activeElement !== commentInput) commentInput.value = comment;
+    commentEditor.classList.add("hidden"); // hide during check-in
   } else {
     commentEditor.classList.add("hidden");
     if (comment.trim()) {
@@ -179,54 +306,74 @@ function renderComment() {
   }
 }
 
-let commentSaveTimer = null;
-commentInput.addEventListener("input", () => {
-  clearTimeout(commentSaveTimer);
-  commentSaveTimer = setTimeout(() => {
-    saveChuckboxField({ comment: commentInput.value });
-  }, 600); // debounce so we're not writing on every keystroke
-});
-
-// ── ITEM GRID ─────────────────────────────────────────────────────────────
+// ── ITEM GRID WITH CATEGORIES ─────────────────────────────────────────────
 function getItemState(itemName) {
+  if (isCheckingIn && localItemChanges[itemName]) {
+    return localItemChanges[itemName];
+  }
   const statuses = (chuckboxDocData && chuckboxDocData.statuses) || {};
-  return statuses[itemName] || { status: "checked", missingCount: 1 };
+  return statuses[itemName] || { status: "neutral", missingCount: 1 };
 }
 
 function renderItems() {
   itemGrid.innerHTML = "";
   const itemsForBox = ITEM_DIRECTORY.filter(it => itemBelongsTo(it, currentChuckbox));
 
+  // Group by category
+  const categorized = {};
   itemsForBox.forEach(item => {
-    const state = getItemState(item.name);
-    const meta = STATUS_META[state.status] || STATUS_META.checked;
+    const cat = item.category || "other";
+    if (!categorized[cat]) categorized[cat] = [];
+    categorized[cat].push(item);
+  });
 
-    const btn = document.createElement("div");
-    btn.className = `item-btn status-${meta.color}` + (isAdmin ? " admin-editable" : "");
-    btn.tabIndex = 0;
-    btn.setAttribute("role", "button");
-    btn.setAttribute("aria-label", `${item.name}: ${meta.label}`);
+  // Sort categories by order in CATEGORY_DISPLAY
+  const sortedCategories = Object.keys(categorized).sort(
+    (a, b) => (CATEGORY_DISPLAY[a]?.order || 99) - (CATEGORY_DISPLAY[b]?.order || 99)
+  );
 
-    const displayStatus = (state.status === "missing" && item.quantity && item.quantity > 1)
-      ? missingLabel(item, state.missingCount)
-      : meta.label;
+  // Render each category
+  sortedCategories.forEach(category => {
+    const catLabel = CATEGORY_DISPLAY[category]?.label || category;
+    
+    // Add category header
+    const headerDiv = document.createElement("div");
+    headerDiv.className = "item-category-header";
+    headerDiv.textContent = catLabel;
+    itemGrid.appendChild(headerDiv);
 
-    btn.innerHTML = `
-      <span class="item-btn-name">${escHtml(item.name)}${item.quantity ? ` (${item.quantity})` : ""}</span>
-      <span class="item-btn-emoji">${item.emoji}</span>
-      <span class="item-btn-status">${escHtml(displayStatus)}</span>
-    `;
+    // Render items in category
+    categorized[category].forEach(item => {
+      const state = getItemState(item.name);
+      const meta = STATUS_META[state.status] || STATUS_META.neutral;
 
-    attachTooltipHandlers(btn, item, state, meta);
+      const btn = document.createElement("div");
+      btn.className = `item-btn status-${meta.color}` + (isAdmin ? " admin-editable" : "");
+      btn.tabIndex = 0;
+      btn.setAttribute("role", "button");
+      btn.setAttribute("aria-label", `${item.name}: ${meta.label}`);
 
-    if (isAdmin) {
-      btn.addEventListener("click", (e) => {
-        if (holdFiredAsTooltip) { holdFiredAsTooltip = false; return; }
-        cycleStatus(item);
-      });
-    }
+      const displayStatus = (state.status === "missing" && item.quantity && item.quantity > 1)
+        ? missingLabel(item, state.missingCount)
+        : meta.label;
 
-    itemGrid.appendChild(btn);
+      btn.innerHTML = `
+        <span class="item-btn-name">${escHtml(item.name)}${item.quantity ? ` (${item.quantity})` : ""}</span>
+        <span class="item-btn-emoji">${item.emoji}</span>
+        <span class="item-btn-status">${escHtml(displayStatus)}</span>
+      `;
+
+      attachTooltipHandlers(btn, item, state, meta);
+
+      if (isAdmin) {
+        btn.addEventListener("click", (e) => {
+          if (holdFiredAsTooltip) { holdFiredAsTooltip = false; return; }
+          cycleStatus(item);
+        });
+      }
+
+      itemGrid.appendChild(btn);
+    });
   });
 }
 
@@ -241,18 +388,21 @@ function cycleStatus(item) {
     nextMissingCount = state.missingCount || 1;
   }
 
-  const newStatuses = {
-    ...(chuckboxDocData.statuses || {}),
-    [item.name]: { status: nextStatus, missingCount: nextMissingCount }
-  };
-  saveChuckboxField({ statuses: newStatuses });
+  localItemChanges[item.name] = { status: nextStatus, missingCount: nextMissingCount };
+  
+  // Enable save button if all items are assigned
+  if (validateAllItemsAssigned()) {
+    saveBtn.disabled = false;
+  }
+  
+  renderItems();
 }
 
 // ── TOOLTIP: hover (desktop) + hold-to-reveal (mobile, all users) ────────
 function attachTooltipHandlers(btn, item, state, meta) {
   const getText = () => {
     const s = getItemState(item.name);
-    const m = STATUS_META[s.status] || STATUS_META.checked;
+    const m = STATUS_META[s.status] || STATUS_META.neutral;
     return m.describe(item);
   };
 
@@ -261,7 +411,7 @@ function attachTooltipHandlers(btn, item, state, meta) {
   btn.addEventListener("mousemove", (e) => positionTooltip(e));
   btn.addEventListener("mouseleave", hideTooltip);
 
-  // Hold-to-reveal (touch) — for both admin and public, per spec
+  // Hold-to-reveal (touch)
   btn.addEventListener("touchstart", (e) => {
     holdFiredAsTooltip = false;
     holdTimer = setTimeout(() => {
@@ -275,7 +425,6 @@ function attachTooltipHandlers(btn, item, state, meta) {
   btn.addEventListener("touchend", () => {
     clearTimeout(holdTimer);
     hideTooltip();
-    // holdFiredAsTooltip stays true briefly so the click handler ignores this tap
     setTimeout(() => { holdFiredAsTooltip = false; }, 50);
   });
   btn.addEventListener("touchmove", () => {
@@ -304,13 +453,13 @@ function hideTooltip() {
 }
 
 // ── PATROL LEADER LOG (shared outings, per-chuckbox leaders) ─────────────
-// Firestore: collection "outings" — each doc: { outing: "Fall Campout", leaders: { Cobra: "...", Egg: "...", ... }, order: number }
 const outingsCol = collection(db, "outings");
 
 onSnapshot(outingsCol, (snap) => {
   outingsData = snap.docs.map(d => ({ id: d.id, ...normalizeOutingDoc(d.data()) }))
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   renderPatrolLog();
+  if (isCheckingIn) populateOutingSelect();
 }, (err) => {
   console.error("Outings listener error:", err);
   patrolLogBody.innerHTML = `<tr><td colspan="3" class="patrol-log-empty">Could not load patrol log.</td></tr>`;
@@ -319,12 +468,13 @@ onSnapshot(outingsCol, (snap) => {
 function renderPatrolLog() {
   patrolLogBody.innerHTML = "";
 
-  const visibleOutings = isAdmin
+  // During modify mode, show all. Otherwise, show only ones with current chuckbox leader or admin mode
+  const visibleOutings = (isModifyingLog)
     ? outingsData
-    : outingsData.filter(o => (o.leaders && o.leaders[currentChuckbox] && o.leaders[currentChuckbox].trim()));
+    : (isCheckingIn ? outingsData : outingsData.filter(o => (o.leaders && o.leaders[currentChuckbox] && o.leaders[currentChuckbox].trim())));
 
   if (visibleOutings.length === 0) {
-    patrolLogBody.innerHTML = `<tr><td colspan="${isAdmin ? 3 : 2}" class="patrol-log-empty">No outings logged yet.</td></tr>`;
+    patrolLogBody.innerHTML = `<tr><td colspan="${isModifyingLog || isCheckingIn ? 3 : 2}" class="patrol-log-empty">No outings logged yet.</td></tr>`;
     return;
   }
 
@@ -332,7 +482,8 @@ function renderPatrolLog() {
     const leaderName = getLeaderForChuckbox(o, currentChuckbox);
     const tr = document.createElement("tr");
 
-    if (isAdmin) {
+    if (isModifyingLog) {
+      // Edit mode for modify log
       tr.innerHTML = `
         <td><input type="text" class="outing-name-input" value="${escAttr(o.outing)}" /></td>
         <td><input type="text" class="leader-input" value="${escAttr(leaderName)}" placeholder="—" /></td>
@@ -353,6 +504,7 @@ function renderPatrolLog() {
         confirmOverlay.classList.remove("hidden");
       });
     } else {
+      // View mode
       tr.innerHTML = `
         <td>${escHtml(o.outing)}</td>
         <td>${escHtml(leaderName)}</td>
@@ -365,6 +517,20 @@ function renderPatrolLog() {
 async function updateOuting(id, partial) {
   const ref = doc(db, "outings", id);
   await setDoc(ref, { ...partial, secret: SECRET }, { merge: true });
+}
+
+async function createNewOuting(outingName, leaderName) {
+  const leaders = {};
+  CHUCKBOXES.forEach(c => leaders[c] = "");
+  leaders[currentChuckbox] = leaderName;
+  
+  const ref = doc(collection(db, "outings"));
+  await setDoc(ref, {
+    outing: outingName,
+    leaders,
+    order: Date.now(),
+    secret: SECRET
+  });
 }
 
 function normalizeOutingDoc(data) {
@@ -383,24 +549,6 @@ function normalizeOutingDoc(data) {
 function getLeaderForChuckbox(outing, chuckbox) {
   return typeof outing?.leaders?.[chuckbox] === "string" ? outing.leaders[chuckbox] : "";
 }
-
-addOutingBtn.addEventListener("click", async () => {
-  const outingName = newOutingEl.value.trim();
-  if (!outingName) return;
-  const leaders = {};
-  CHUCKBOXES.forEach(c => leaders[c] = "");
-  leaders[currentChuckbox] = newLeaderEl.value.trim();
-
-  const ref = doc(collection(db, "outings"));
-  await setDoc(ref, {
-    outing: outingName,
-    leaders,
-    order: Date.now(),
-    secret: SECRET
-  });
-  newOutingEl.value = "";
-  newLeaderEl.value = "";
-});
 
 cancelDelete.addEventListener("click", () => {
   confirmOverlay.classList.add("hidden");

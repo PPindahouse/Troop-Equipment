@@ -8,6 +8,7 @@
 //   emoji       — Emoji shown on the button (string, required)
 //   type        — "consumable" or "" (blank = regular item)
 //   quantity    — number > 1, or "" (blank = quantity of 1)
+//   category    — "consumable", "utensil", "cooking", or "other" (for organizing display)
 //   application — array of chuckbox names this item belongs to,
 //                 or [] / omitted = appears in ALL chuckboxes
 //
@@ -30,40 +31,60 @@
 export const CHUCKBOXES = ["Cobra", "Egg", "Moose", "Scorpion", "Adult"];
 
 export const ITEM_DIRECTORY = [
-  { name: "Camp Stove",          emoji: "🔥" },
-  { name: "Big Pot",             emoji: "🍲" },
-  { name: "Big Pot Lid",         emoji: "⭕" },
-  { name: "Medium Pot",          emoji: "🍲" },
-  { name: "Medium Pot Lid",      emoji: "⭕" },
-  { name: "Small Pot",           emoji: "🍲" },
-  { name: "Small Pot Lid",       emoji: "⭕" },
-  { name: "Pan",                 emoji: "🍳" },
-  { name: "Plates",              emoji: "🍽️", quantity: 5 },
-  { name: "Cutting Board",       emoji: "🔪" },
-  { name: "Knife",               emoji: "🗡️", quantity: 2 },
-  { name: "Tongs",               emoji: "🥢" },
-  { name: "Large Spoon",         emoji: "🥄" },
-  { name: "Ladle",               emoji: "🥣" },
-  { name: "Can Opener",          emoji: "🔧" },
-  { name: "Spatula",             emoji: "🍳" },
-  { name: "Sanitization Tabs",   emoji: "💊", type: "consumable" },
-  { name: "Paper Towels",        emoji: "🧻", type: "consumable" },
-  { name: "Aluminum Foil",       emoji: "🥡", type: "consumable" },
-  { name: "Cooking Spray",       emoji: "🧴", type: "consumable" },
-  { name: "Vegetable Oil",       emoji: "🫗", type: "consumable" },
-  { name: "Salt",                emoji: "🧂", type: "consumable" },
-  { name: "Pepper",              emoji: "🧂", type: "consumable" },
-  { name: "Cinnamon",            emoji: "🟤" },
-  { name: "Hot Glove",           emoji: "🧤", quantity: 2 },
+  // ── CONSUMABLES ────────────────────────────────────────────
+  { name: "Liquid Soap",         emoji: "🧴", type: "consumable", category: "consumable" },
+  { name: "Sponge",              emoji: "🧽", type: "consumable", category: "consumable" },
+  { name: "Steel Wool",          emoji: "✨", type: "consumable", category: "consumable" },
+  { name: "Sanitization Tabs",   emoji: "💊", type: "consumable", category: "consumable" },
+  { name: "Paper Towels",        emoji: "🧻", type: "consumable", category: "consumable" },
+  { name: "Aluminum Foil",       emoji: "🥡", type: "consumable", category: "consumable" },
+  { name: "Cooking Spray",       emoji: "🧴", type: "consumable", category: "consumable" },
+  { name: "Vegetable Oil",       emoji: "🫗", type: "consumable", category: "consumable" },
+  { name: "Salt",                emoji: "🧂", type: "consumable", category: "consumable" },
+  { name: "Pepper",              emoji: "🧂", type: "consumable", category: "consumable" },
+  { name: "Old Bay Seasoning",   emoji: "🌿", type: "consumable", category: "consumable" },
+
+  // ── UTENSILS ───────────────────────────────────────────────
+  { name: "Vegetable Peeler",    emoji: "🔪", category: "utensil" },
+  { name: "Cutting Board",       emoji: "🔪", category: "utensil" },
+  { name: "Knife",               emoji: "🗡️", quantity: 2, category: "utensil" },
+  { name: "Tongs",               emoji: "🥢", category: "utensil" },
+  { name: "Large Spoon",         emoji: "🥄", category: "utensil" },
+  { name: "Slotted Spoon",       emoji: "🥄", category: "utensil" },
+  { name: "Ladle",               emoji: "🥣", category: "utensil" },
+  { name: "Can Opener",          emoji: "🔧", category: "utensil" },
+  { name: "Spatula",             emoji: "🍳", category: "utensil" },
+  { name: "Pan Handle",          emoji: "🔥", category: "utensil" },
+  { name: "Measuring Cup",       emoji: "📏", category: "utensil" },
+  { name: "Hot Glove",           emoji: "🧤", quantity: 2, category: "utensil" },
+
+  // ── COOKING ────────────────────────────────────────────────
+  { name: "Camp Stove",          emoji: "🔥", category: "cooking" },
+  { name: "Propane Hose",        emoji: "🔗", category: "cooking" },
+  { name: "Big Pot",             emoji: "🍲", category: "cooking" },
+  { name: "Big Pot Lid",         emoji: "⭕", category: "cooking" },
+  { name: "Medium Pot",          emoji: "🍲", category: "cooking" },
+  { name: "Medium Pot Lid",      emoji: "⭕", category: "cooking" },
+  { name: "Small Pot",           emoji: "🍲", category: "cooking" },
+  { name: "Small Pot Lid",       emoji: "⭕", category: "cooking" },
+  { name: "Pan",                 emoji: "🍳", category: "cooking" },
+  { name: "Cast Iron Griddle",   emoji: "🔲", category: "cooking" },
+  { name: "Colander",            emoji: "🫧", category: "cooking" },
+  { name: "Plates",              emoji: "🍽️", quantity: 5, category: "cooking" },
+
+  // ── OTHER ──────────────────────────────────────────────────
+  { name: "Cinnamon",            emoji: "🟤", category: "other" },
+  { name: "Picnic Table Cover",  emoji: "🛋️", category: "other" },
+  { name: "Fire Blanket",        emoji: "🔴", category: "other" },
 ];
 
 // ── STATUS DEFINITIONS ───────────────────────────────────────────────
 // Order matters — this is the cycle order admins click through.
-// `consumableOnly: true` statuses only apply to type:"consumable" items.
-// `quantityOnly: true` statuses only apply to items with quantity > 1.
+// During check-in, items start at "neutral" and must be cycled to another status.
+// Neutral is NOT persisted to the database.
 
-export const STATUS_CYCLE_REGULAR    = ["checked", "damaged", "missing"];
-export const STATUS_CYCLE_CONSUMABLE = ["checked", "low", "empty"];
+export const STATUS_CYCLE_REGULAR    = ["neutral", "checked", "damaged", "missing"];
+export const STATUS_CYCLE_CONSUMABLE = ["neutral", "checked", "low", "empty"];
 
 export const STATUS_META = {
   checked: {
@@ -92,7 +113,20 @@ export const STATUS_META = {
     describe: (item) => item.quantity && item.quantity > 1
       ? `At least one ${item.name} is missing from the box.`
       : `${item.name} is missing from the box.`
+  },
+  neutral: {
+    label: "Needs Check",
+    color: "neutral",
+    describe: (item) => `${item.name} needs to be checked and assigned a status.`
   }
+};
+
+// ── CATEGORY DEFINITIONS ───────────────────────────────────
+export const CATEGORY_DISPLAY = {
+  consumable: { label: "Consumables", order: 1 },
+  utensil: { label: "Utensils", order: 2 },
+  cooking: { label: "Cooking Items", order: 3 },
+  other: { label: "Other", order: 4 }
 };
 
 // Builds the display label for a missing-with-quantity item, e.g. "Missing x2"
