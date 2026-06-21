@@ -611,6 +611,10 @@ tr.warn-red .date-cell {
 }
 
 .item-category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   font-family: 'Oswald', sans-serif;
   font-size: 1rem;
   font-weight: 600;
@@ -621,6 +625,33 @@ tr.warn-red .date-cell {
   padding: 10px 12px;
   margin: -16px -16px 14px -16px;
   border-radius: 6px 6px 0 0;
+}
+
+.btn-mark-all-complete {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-mark-all-complete:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.btn-mark-all-complete:active {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(0.98);
 }
 
 .item-category-grid {

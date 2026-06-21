@@ -162,6 +162,7 @@ function unlock() {
     renderItems();
     renderPatrolLog();
     populateOutingSelect();
+    setupPatrolLeaderInputs();
   } else {
     codeError.classList.remove("hidden");
     codeInput.value = "";
@@ -193,6 +194,18 @@ saveBtn.addEventListener("click", async () => {
     return;
   }
   
+  // Validate patrol leader data
+  const outingName = localOuting?.outing || newOutingInput.value.trim();
+  if (!localPatrolLeader.trim()) {
+    alert("Please enter a patrol leader name.");
+    patrolLeaderInput.focus();
+    return;
+  }
+  if (!outingName) {
+    alert("Please select an existing outing or create a new one.");
+    return;
+  }
+  
   saveBtn.disabled = true;
   saveBtn.textContent = "Saving...";
   
@@ -204,19 +217,23 @@ saveBtn.addEventListener("click", async () => {
     };
     await saveChuckboxField({ statuses: newStatuses });
     
-    // Write patrol leader if provided
-    if (localPatrolLeader.trim() || localOuting) {
-      const outingName = localOuting?.name || newOutingInput.value.trim();
-      if (outingName && localPatrolLeader.trim()) {
-        if (localOuting?.id) {
-          // Update existing outing
-          const leaders = { ...(localOuting.leaders || {}), [currentChuckbox]: localPatrolLeader };
-          await updateOuting(localOuting.id, { leaders });
-        } else {
-          // Create new outing
-          await createNewOuting(outingName, localPatrolLeader);
-        }
-      }
+    // Write comment if edited
+    if (isCheckingIn) {
+      const commentText = commentInput.value.trim();
+      // Only save if it's not just the auto-populated empty message
+      const comment = (commentText && !commentText.startsWith("[Auto-populated from items] All items checked")) ? commentText : "";
+      await saveChuckboxField({ comment });
+    }
+    
+    // Write patrol leader - always save if we get here
+    const outingName = localOuting?.outing || newOutingInput.value.trim();
+    if (localOuting?.id) {
+      // Update existing outing
+      const leaders = { ...(localOuting.leaders || {}), [currentChuckbox]: localPatrolLeader };
+      await updateOuting(localOuting.id, { leaders });
+    } else if (outingName) {
+      // Create new outing
+      await createNewOuting(outingName, localPatrolLeader);
     }
     
     // Reset check-in state
@@ -233,8 +250,16 @@ saveBtn.addEventListener("click", async () => {
     adminNav.classList.add("hidden");
     chuckboxSelect.disabled = false;
     patrolLoggerUI.classList.add("hidden");
+    plActionHead.classList.add("hidden");
     
     saveBtn.textContent = "Save Check-In";
+    saveBtn.disabled = true;
+    
+    // Clear form fields
+    patrolLeaderInput.value = "";
+    outingSelect.value = "";
+    newOutingInput.value = "";
+    commentInput.value = "";
     
     renderItems();
     renderPatrolLog();
@@ -259,12 +284,17 @@ function validateAllItemsAssigned() {
   return true;
 }
 
+// ── CHECK SAVE BUTTON STATE ────────────────────────────────────────────
+function checkSaveButtonState() {
+  if (!isCheckingIn) return;
+  const allItemsAssigned = validateAllItemsAssigned();
+  const outingName = localOuting?.outing || newOutingInput.value.trim();
+  const hasPatrolData = localPatrolLeader.trim() && outingName;
+  saveBtn.disabled = !(allItemsAssigned && hasPatrolData);
+}
+
 // ── MODIFY LOG MODE ──────────────────────────────────────────────────────
-modifyLogBtn.addEventListener("click", () => {
-  isModifyingLog = !isModifyingLog;
-  modifyLogBtn.textContent = isModifyingLog ? "Done Modifying" : "Modify Log";
-  renderPatrolLog();
-});
+// (Handled by modifyPatrolLogBtn in header - uses modal-based unlock)
 
 // ── POPULATE OUTING SELECT ───────────────────────────────────────────────
 function populateOutingSelect() {
@@ -275,7 +305,17 @@ function populateOutingSelect() {
     opt.textContent = o.outing;
     outingSelect.appendChild(opt);
   });
+}
+
+// ── SETUP PATROL LEADER FORM INPUTS ───────────────────────────────────
+function setupPatrolLeaderInputs() {
+  // Sync patrol leader input to local state
+  patrolLeaderInput.addEventListener("input", () => {
+    localPatrolLeader = patrolLeaderInput.value.trim();
+    checkSaveButtonState();
+  });
   
+  // Sync outing select
   outingSelect.addEventListener("change", () => {
     if (outingSelect.value) {
       localOuting = outingsData.find(o => o.id === outingSelect.value) || null;
@@ -285,6 +325,16 @@ function populateOutingSelect() {
       localOuting = null;
       newOutingInput.value = "";
     }
+    checkSaveButtonState();
+  });
+  
+  // Sync new outing input
+  newOutingInput.addEventListener("input", () => {
+    if (newOutingInput.value.trim()) {
+      localOuting = null;
+      outingSelect.value = "";
+    }
+    checkSaveButtonState();
   });
 }
 
@@ -303,6 +353,7 @@ function subscribeToChuckbox() {
     renderLastUpdated();
     renderComment();
     renderItems();
+    renderPatrolLog();
   }, (err) => {
     console.error("Chuckbox listener error:", err);
     itemGrid.innerHTML = `<p style="grid-column:1/-1;color:var(--text-muted);font-style:italic;">Could not load chuckbox data.</p>`;
@@ -335,9 +386,15 @@ function renderLastUpdated() {
 function renderComment() {
   const comment = (chuckboxDocData && chuckboxDocData.comment) || "";
 
-  if (isAdmin) {
+  if (isAdmin && isCheckingIn) {
+    // Show editor in check-in mode
     commentBox.classList.add("hidden");
-    commentEditor.classList.add("hidden"); // hide during check-in
+    commentEditor.classList.remove("hidden");
+    
+    // Auto-populate with problematic items
+    if (!commentInput.value || commentInput.value.startsWith("[Auto-populated")) {
+      commentInput.value = generateAutoComment();
+    }
   } else {
     commentEditor.classList.add("hidden");
     if (comment.trim()) {
@@ -349,7 +406,39 @@ function renderComment() {
   }
 }
 
+// ── AUTO-GENERATE COMMENT FROM PROBLEMATIC ITEMS ──────────────────────
+function generateAutoComment() {
+  const itemsForBox = ITEM_DIRECTORY.filter(it => itemBelongsTo(it, currentChuckbox));
+  const problems = [];
+  
+  itemsForBox.forEach(item => {
+    const state = getItemState(item.name);
+    const status = state.status;
+    
+    // Include items that are not checked and not neutral
+    if (status !== "checked" && status !== "neutral") {
+      const meta = STATUS_META[status];
+      const label = meta?.label || status;
+      problems.push(`• ${item.emoji} ${item.name}: ${label}`);
+    }
+  });
+  
+  if (problems.length === 0) {
+    return "[Auto-populated from items] All items checked ✓";
+  }
+  
+  return "[Auto-populated from items]\n" + problems.join("\n");
+}
+
 // ── ITEM GRID WITH CATEGORIES ─────────────────────────────────────────────
+function markAllInCategory(category, items) {
+  items.forEach(item => {
+    localItemChanges[item.name] = { status: "checked", missingCount: 1 };
+  });
+  checkSaveButtonState();
+  renderItems();
+}
+
 function getItemState(itemName) {
   if (isCheckingIn && localItemChanges[itemName]) {
     return localItemChanges[itemName];
@@ -383,10 +472,25 @@ function renderItems() {
     const categoryBox = document.createElement("div");
     categoryBox.className = "item-category-box";
     
-    // Add category header
+    // Add category header with "mark all complete" button
     const headerDiv = document.createElement("div");
     headerDiv.className = "item-category-header";
-    headerDiv.textContent = catLabel;
+    
+    const headerText = document.createElement("span");
+    headerText.textContent = catLabel;
+    headerDiv.appendChild(headerText);
+    
+    // Add "mark all as complete" button in check-in mode
+    if (isCheckingIn) {
+      const markAllBtn = document.createElement("button");
+      markAllBtn.className = "btn-mark-all-complete";
+      markAllBtn.textContent = "[mark all as complete]";
+      markAllBtn.addEventListener("click", () => {
+        markAllInCategory(category, categorized[category]);
+      });
+      headerDiv.appendChild(markAllBtn);
+    }
+    
     categoryBox.appendChild(headerDiv);
     
     // Create grid for items within this category
@@ -461,66 +565,15 @@ function cycleStatus(item) {
     localItemChanges[item.name] = { status: nextStatus, missingCount: nextMissingCount };
   }
   
-  // Enable save button if all items are assigned
-  if (validateAllItemsAssigned()) {
-    saveBtn.disabled = false;
-  }
+  // Check save button state
+  checkSaveButtonState();
   
   renderItems();
 }
 
-// ── TOOLTIP: hover (desktop) + hold-to-reveal (mobile, all users) ────────
+// ── TOOLTIP: DISABLED (removed per user request) ──────────────────────
 function attachTooltipHandlers(btn, item, state, meta) {
-  const getText = () => {
-    const s = getItemState(item.name);
-    const m = STATUS_META[s.status] || STATUS_META.neutral;
-    return m.describe(item);
-  };
-
-  // Desktop hover
-  btn.addEventListener("mouseenter", (e) => showTooltip(getText(), e));
-  btn.addEventListener("mousemove", (e) => positionTooltip(e));
-  btn.addEventListener("mouseleave", hideTooltip);
-
-  // Hold-to-reveal (touch)
-  btn.addEventListener("touchstart", (e) => {
-    holdFiredAsTooltip = false;
-    holdTimer = setTimeout(() => {
-      const touch = e.touches[0];
-      showTooltip(getText(), { clientX: touch.clientX, clientY: touch.clientY });
-      holdFiredAsTooltip = true;
-      if (navigator.vibrate) navigator.vibrate(8);
-    }, 420);
-  }, { passive: true });
-
-  btn.addEventListener("touchend", () => {
-    clearTimeout(holdTimer);
-    hideTooltip();
-    setTimeout(() => { holdFiredAsTooltip = false; }, 50);
-  });
-  btn.addEventListener("touchmove", () => {
-    clearTimeout(holdTimer);
-    hideTooltip();
-  });
-}
-
-function showTooltip(text, evt) {
-  tooltip.textContent = text;
-  tooltip.classList.add("visible");
-  positionTooltip(evt);
-}
-function positionTooltip(evt) {
-  const padding = 14;
-  let x = evt.clientX + padding;
-  let y = evt.clientY + padding;
-  const rect = tooltip.getBoundingClientRect();
-  if (x + rect.width > window.innerWidth - 8) x = evt.clientX - rect.width - padding;
-  if (y + rect.height > window.innerHeight - 8) y = evt.clientY - rect.height - padding;
-  tooltip.style.left = x + "px";
-  tooltip.style.top = y + "px";
-}
-function hideTooltip() {
-  tooltip.classList.remove("visible");
+  // Tooltips disabled - was: hover (desktop) + hold-to-reveal (mobile)
 }
 
 // ── PATROL LEADER LOG (shared outings, per-chuckbox leaders) ─────────────
