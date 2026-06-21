@@ -42,9 +42,9 @@ let isModifyingLog = false;                  // modify log mode active
 
 // ── DOM ───────────────────────────────────────────────────────────────────
 const adminBtn       = document.getElementById("adminBtn");
+const modifyPatrolLogBtn = document.getElementById("modifyPatrolLogBtn");
 const adminNav       = document.getElementById("adminNav");
 const saveBtn        = document.getElementById("saveBtn");
-const modifyLogBtn   = document.getElementById("modifyLogBtn");
 const chuckboxSelect = document.getElementById("chuckboxSelect");
 const lastUpdatedEl  = document.getElementById("lastUpdated");
 const commentBox     = document.getElementById("commentBox");
@@ -60,7 +60,6 @@ const outingSelect   = document.getElementById("outingSelect");
 const newOutingInput = document.getElementById("newOutingInput");
 
 const patrolLogBody  = document.getElementById("patrolLogBody");
-const patrolLogAdd   = document.getElementById("patrolLogAdd");
 const plActionHead   = document.getElementById("plActionHead");
 
 const modalOverlay   = document.getElementById("modalOverlay");
@@ -110,9 +109,36 @@ adminBtn.addEventListener("click", () => {
   codeError.classList.add("hidden");
   setTimeout(() => codeInput.focus(), 50);
 });
-cancelModal.addEventListener("click", () => modalOverlay.classList.add("hidden"));
-confirmModal.addEventListener("click", unlock);
-codeInput.addEventListener("keydown", e => { if (e.key === "Enter") unlock(); });
+
+// ── MODIFY PATROL LOG (separate button) ────────────────────────────────
+modifyPatrolLogBtn.addEventListener("click", () => {
+  modalOverlay.classList.remove("hidden");
+  codeInput.value = "";
+  codeError.classList.add("hidden");
+  codeInput.dataset.mode = "modifyLog";
+  setTimeout(() => codeInput.focus(), 50);
+});
+
+cancelModal.addEventListener("click", () => {
+  modalOverlay.classList.add("hidden");
+  delete codeInput.dataset.mode;
+});
+
+confirmModal.addEventListener("click", () => {
+  const mode = codeInput.dataset.mode || "checkIn";
+  delete codeInput.dataset.mode;
+  if (mode === "modifyLog") unlockModifyLog();
+  else unlock();
+});
+
+codeInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    const mode = codeInput.dataset.mode || "checkIn";
+    delete codeInput.dataset.mode;
+    if (mode === "modifyLog") unlockModifyLog();
+    else unlock();
+  }
+});
 
 function unlock() {
   if (codeInput.value === SECRET) {
@@ -124,18 +150,35 @@ function unlock() {
     
     modalOverlay.classList.add("hidden");
     adminBtn.classList.add("hidden");
+    modifyPatrolLogBtn.classList.add("hidden");
     adminNav.classList.remove("hidden");
     chuckboxSelect.disabled = true;
     patrolLoggerUI.classList.remove("hidden");
     saveBtn.disabled = true;
     
     plActionHead.classList.remove("hidden");
-    patrolLogAdd.classList.add("hidden");
     
     renderComment();
     renderItems();
     renderPatrolLog();
     populateOutingSelect();
+  } else {
+    codeError.classList.remove("hidden");
+    codeInput.value = "";
+    codeInput.focus();
+  }
+}
+
+function unlockModifyLog() {
+  if (codeInput.value === SECRET) {
+    isModifyingLog = true;
+    
+    modalOverlay.classList.add("hidden");
+    adminBtn.classList.add("hidden");
+    modifyPatrolLogBtn.classList.add("hidden");
+    plActionHead.classList.remove("hidden");
+    
+    renderPatrolLog();
   } else {
     codeError.classList.remove("hidden");
     codeInput.value = "";
@@ -186,10 +229,10 @@ saveBtn.addEventListener("click", async () => {
     
     // Reset UI
     adminBtn.classList.remove("hidden");
+    modifyPatrolLogBtn.classList.remove("hidden");
     adminNav.classList.add("hidden");
     chuckboxSelect.disabled = false;
     patrolLoggerUI.classList.add("hidden");
-    patrolLogAdd.classList.remove("hidden");
     
     saveBtn.textContent = "Save Check-In";
     
@@ -332,23 +375,31 @@ function renderItems() {
     (a, b) => (CATEGORY_DISPLAY[a]?.order || 99) - (CATEGORY_DISPLAY[b]?.order || 99)
   );
 
-  // Render each category
+  // Render each category in its own box
   sortedCategories.forEach(category => {
     const catLabel = CATEGORY_DISPLAY[category]?.label || category;
+    
+    // Create category box container
+    const categoryBox = document.createElement("div");
+    categoryBox.className = "item-category-box";
     
     // Add category header
     const headerDiv = document.createElement("div");
     headerDiv.className = "item-category-header";
     headerDiv.textContent = catLabel;
-    itemGrid.appendChild(headerDiv);
-
+    categoryBox.appendChild(headerDiv);
+    
+    // Create grid for items within this category
+    const itemsGrid = document.createElement("div");
+    itemsGrid.className = "item-category-grid";
+    
     // Render items in category
     categorized[category].forEach(item => {
       const state = getItemState(item.name);
       const meta = STATUS_META[state.status] || STATUS_META.neutral;
 
       const btn = document.createElement("div");
-      btn.className = `item-btn status-${meta.color}` + (isAdmin ? " admin-editable" : "");
+      btn.className = `item-btn status-${meta.color}` + (isAdmin || isCheckingIn ? " admin-editable" : "");
       btn.tabIndex = 0;
       btn.setAttribute("role", "button");
       btn.setAttribute("aria-label", `${item.name}: ${meta.label}`);
@@ -365,30 +416,50 @@ function renderItems() {
 
       attachTooltipHandlers(btn, item, state, meta);
 
-      if (isAdmin) {
+      if (isAdmin || isCheckingIn) {
         btn.addEventListener("click", (e) => {
           if (holdFiredAsTooltip) { holdFiredAsTooltip = false; return; }
           cycleStatus(item);
         });
       }
 
-      itemGrid.appendChild(btn);
+      itemsGrid.appendChild(btn);
     });
+    
+    categoryBox.appendChild(itemsGrid);
+    itemGrid.appendChild(categoryBox);
   });
 }
 
 function cycleStatus(item) {
   const cycle = getCycleFor(item);
   const state = getItemState(item.name);
-  const idx = cycle.indexOf(state.status);
-  const nextStatus = cycle[(idx + 1) % cycle.length];
-
-  let nextMissingCount = state.missingCount || 1;
-  if (nextStatus === "missing" && item.quantity && item.quantity > 1) {
-    nextMissingCount = state.missingCount || 1;
+  const currentStatus = state.status;
+  const currentMissingCount = state.missingCount || 1;
+  
+  // If currently on "missing" and item has multiple quantities, cycle through counts first
+  if (currentStatus === "missing" && item.quantity && item.quantity > 1) {
+    if (currentMissingCount < item.quantity) {
+      // Increment missing count
+      localItemChanges[item.name] = { status: "missing", missingCount: currentMissingCount + 1 };
+    } else {
+      // Move to next status in cycle
+      const idx = cycle.indexOf(currentStatus);
+      const nextStatus = cycle[(idx + 1) % cycle.length];
+      localItemChanges[item.name] = { status: nextStatus, missingCount: 1 };
+    }
+  } else {
+    // Normal status cycling
+    const idx = cycle.indexOf(currentStatus);
+    const nextStatus = cycle[(idx + 1) % cycle.length];
+    let nextMissingCount = 1;
+    
+    if (nextStatus === "missing" && item.quantity && item.quantity > 1) {
+      nextMissingCount = 1; // Start at x1 when entering missing status
+    }
+    
+    localItemChanges[item.name] = { status: nextStatus, missingCount: nextMissingCount };
   }
-
-  localItemChanges[item.name] = { status: nextStatus, missingCount: nextMissingCount };
   
   // Enable save button if all items are assigned
   if (validateAllItemsAssigned()) {
@@ -468,13 +539,17 @@ onSnapshot(outingsCol, (snap) => {
 function renderPatrolLog() {
   patrolLogBody.innerHTML = "";
 
-  // During modify mode, show all. Otherwise, show only ones with current chuckbox leader or admin mode
-  const visibleOutings = (isModifyingLog)
-    ? outingsData
-    : (isCheckingIn ? outingsData : outingsData.filter(o => (o.leaders && o.leaders[currentChuckbox] && o.leaders[currentChuckbox].trim())));
+  // Show all outings always (so user can see and modify logs per chuckbox)
+  const visibleOutings = outingsData;
 
   if (visibleOutings.length === 0) {
-    patrolLogBody.innerHTML = `<tr><td colspan="${isModifyingLog || isCheckingIn ? 3 : 2}" class="patrol-log-empty">No outings logged yet.</td></tr>`;
+    patrolLogBody.innerHTML = `<tr><td colspan="3" class="patrol-log-empty">No outings logged yet.</td></tr>`;
+    if (isModifyingLog) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="3" style="text-align:center; padding:16px;"><button class="btn-secondary" id="doneModifyingBtn">Done Modifying</button></td>`;
+      patrolLogBody.appendChild(tr);
+      document.getElementById("doneModifyingBtn").addEventListener("click", exitModifyLog);
+    }
     return;
   }
 
@@ -504,7 +579,7 @@ function renderPatrolLog() {
         confirmOverlay.classList.remove("hidden");
       });
     } else {
-      // View mode
+      // View mode - show outing and leader for current chuckbox
       tr.innerHTML = `
         <td>${escHtml(o.outing)}</td>
         <td>${escHtml(leaderName)}</td>
@@ -512,6 +587,14 @@ function renderPatrolLog() {
     }
     patrolLogBody.appendChild(tr);
   });
+  
+  // Add "Done Modifying" button row at the bottom in modify mode
+  if (isModifyingLog) {
+    const footerTr = document.createElement("tr");
+    footerTr.innerHTML = `<td colspan="3" style="text-align:center; padding:16px;"><button class="btn-secondary" id="doneModifyingBtn">Done Modifying</button></td>`;
+    patrolLogBody.appendChild(footerTr);
+    document.getElementById("doneModifyingBtn").addEventListener("click", exitModifyLog);
+  }
 }
 
 async function updateOuting(id, partial) {
@@ -554,11 +637,21 @@ cancelDelete.addEventListener("click", () => {
   confirmOverlay.classList.add("hidden");
   pendingDeleteId = null;
 });
+
+// ── EXIT MODIFY LOG ────────────────────────────────────────────────────
+function exitModifyLog() {
+  isModifyingLog = false;
+  adminBtn.classList.remove("hidden");
+  modifyPatrolLogBtn.classList.remove("hidden");
+  plActionHead.classList.add("hidden");
+  renderPatrolLog();
+}
 confirmDelete.addEventListener("click", async () => {
   if (!pendingDeleteId) return;
   confirmOverlay.classList.add("hidden");
   try {
     await deleteDoc(doc(db, "outings", pendingDeleteId));
+    renderPatrolLog();
   } catch (err) {
     alert("Error removing outing. See console.");
     console.error(err);

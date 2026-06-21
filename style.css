@@ -89,6 +89,12 @@ body {
 }
 .btn-admin:hover { background: #D4B278; transform: translateY(-1px); }
 
+.header-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .btn-primary {
   background: var(--green-dark);
   color: #fff;
@@ -589,8 +595,35 @@ tr.warn-red .date-cell {
   }
 }
 
-/* ── Item grid ─────────────────────────────────── */
+/* ── Item grid with category boxes ─────────────────── */
 .item-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.item-category-box {
+  background: #fff;
+  border: 2px solid var(--rule);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(45,80,22,0.06);
+}
+
+.item-category-header {
+  font-family: 'Oswald', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--green-mid);
+  padding: 10px 12px;
+  margin: -16px -16px 14px -16px;
+  border-radius: 6px 6px 0 0;
+}
+
+.item-category-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
   gap: 12px;
@@ -692,10 +725,10 @@ tr.warn-red .date-cell {
 /* ── Section headers within layout ────────────────── */
 .section-label {
   font-family: 'Oswald', sans-serif;
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: var(--green-dark);
-  margin-bottom: 14px;
+  margin-bottom: 20px;
   letter-spacing: 0.02em;
 }
 
@@ -850,21 +883,7 @@ tr.warn-red .date-cell {
   white-space: nowrap;
 }
 
-/* ── Item category headers (in grid) ────────────── */
-.item-category-header {
-  grid-column: 1 / -1;
-  font-family: 'Oswald', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--green-dark);
-  border-bottom: 2px solid var(--green-dark);
-  padding: 12px 0 8px 0;
-  margin-top: 8px;
-}
-
 @media (max-width: 600px) {
-  .item-grid { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); }
+  .item-category-grid { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); }
   .item-btn-emoji { font-size: 1.4rem; }
 }

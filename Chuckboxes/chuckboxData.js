@@ -43,10 +43,10 @@ export const ITEM_DIRECTORY = [
   { name: "Salt",                emoji: "🧂", type: "consumable", category: "consumable" },
   { name: "Pepper",              emoji: "🧂", type: "consumable", category: "consumable" },
   { name: "Old Bay Seasoning",   emoji: "🌿", type: "consumable", category: "consumable" },
+  { name: "Cinnamon",            emoji: "🟤", type: "consumable", category: "consumable" },
 
   // ── UTENSILS ───────────────────────────────────────────────
   { name: "Vegetable Peeler",    emoji: "🔪", category: "utensil" },
-  { name: "Cutting Board",       emoji: "🔪", category: "utensil" },
   { name: "Knife",               emoji: "🗡️", quantity: 2, category: "utensil" },
   { name: "Tongs",               emoji: "🥢", category: "utensil" },
   { name: "Large Spoon",         emoji: "🥄", category: "utensil" },
@@ -54,13 +54,11 @@ export const ITEM_DIRECTORY = [
   { name: "Ladle",               emoji: "🥣", category: "utensil" },
   { name: "Can Opener",          emoji: "🔧", category: "utensil" },
   { name: "Spatula",             emoji: "🍳", category: "utensil" },
-  { name: "Pan Handle",          emoji: "🔥", category: "utensil" },
-  { name: "Measuring Cup",       emoji: "📏", category: "utensil" },
-  { name: "Hot Glove",           emoji: "🧤", quantity: 2, category: "utensil" },
 
   // ── COOKING ────────────────────────────────────────────────
   { name: "Camp Stove",          emoji: "🔥", category: "cooking" },
-  { name: "Propane Hose",        emoji: "🔗", category: "cooking" },
+  { name: "Pan Handle",          emoji: "🔥", category: "cooking" },
+  { name: "Cutting Board",       emoji: "🔪", category: "cooking" },
   { name: "Big Pot",             emoji: "🍲", category: "cooking" },
   { name: "Big Pot Lid",         emoji: "⭕", category: "cooking" },
   { name: "Medium Pot",          emoji: "🍲", category: "cooking" },
@@ -73,7 +71,9 @@ export const ITEM_DIRECTORY = [
   { name: "Plates",              emoji: "🍽️", quantity: 5, category: "cooking" },
 
   // ── OTHER ──────────────────────────────────────────────────
-  { name: "Cinnamon",            emoji: "🟤", category: "other" },
+  { name: "Propane Hose",        emoji: "🔗", category: "other" },
+  { name: "Measuring Cup",       emoji: "📏", category: "other" },
+  { name: "Hot Glove",           emoji: "🧤", quantity: 2, category: "other" },
   { name: "Picnic Table Cover",  emoji: "🛋️", category: "other" },
   { name: "Fire Blanket",        emoji: "🔴", category: "other" },
 ];
