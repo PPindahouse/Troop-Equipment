@@ -2,148 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Troop Equipment Log</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <meta http-equiv="refresh" content="3;url=https://troop-equipment.web.app/1094/" />
+  <title>Redirecting…</title>
+  <style>
+    body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #2D5016; color: #fff; text-align: center; }
+    a { color: #C4A265; }
+  </style>
 </head>
 <body>
-
-  <!-- PUBLIC HEADER -->
-  <header class="site-header">
-    <div class="header-inner">
-      <div class="header-brand">
-        <span class="fleur">⚜</span>
-        <div>
-          <h1>Troop Equipment Log</h1>
-          <p class="troop-sub">Troop 1094</p>
-        </div>
-      </div>
-      <button id="adminBtn" class="btn-admin">Add / Modify List</button>
-    </div>
-    <!-- SITE TABS -->
-    <nav class="site-tabs">
-      <a href="/Troop-Equipment/" class="site-tab active">Equipment</a>
-      <a href="/Troop-Equipment/Chuckboxes/" class="site-tab">Chuckbox</a>
-    </nav>
-  </header>
-
-  <!-- ADMIN NAVBAR (hidden until unlocked) -->
-  <nav id="adminNav" class="admin-nav hidden">
-    <div class="admin-nav-inner">
-      <span class="admin-label">⚙ Admin Mode</span>
-      <div class="admin-tabs">
-        <button class="tab-btn active" data-tab="checkout">Check Out</button>
-        <button class="tab-btn" data-tab="checkin">Check In</button>
-      </div>
-    </div>
-  </nav>
-
-  <!-- ADMIN PANELS -->
-  <div id="adminPanels" class="hidden">
-
-    <!-- CHECK OUT PANEL -->
-    <section id="panel-checkout" class="admin-panel">
-      <div class="panel-inner">
-        <h2>Check Out Equipment</h2>
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="equipName">Equipment Name</label>
-            <input type="text" id="equipName" placeholder="E4 /Adult Cooler" />
-          </div>
-          <div class="form-group">
-            <label for="equipType">Equipment Type</label>
-            <select id="equipType">
-              <option value="">— Select Type —</option>
-              <option>Tent</option>
-              <option>Cooler</option>
-              <option>Dry Bin</option>
-              <option>Rain Fly</option>
-              <option>Water Jug</option>
-              <option>Other</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="personName">Scout Responsible:</label>
-            <input type="text" id="personName" placeholder="Scout or leader name" />
-          </div>
-        </div>
-        <button id="checkoutBtn" class="btn-primary">Record Checkout</button>
-        <p id="checkoutMsg" class="form-msg"></p>
-      </div>
-    </section>
-
-    <!-- CHECK IN PANEL -->
-    <section id="panel-checkin" class="admin-panel hidden">
-      <div class="panel-inner">
-        <h2>Check In Equipment</h2>
-        <div class="form-group search-group">
-          <label for="searchInput">Search Equipment</label>
-          <input type="text" id="searchInput" placeholder="Filter by name or person…" />
-        </div>
-        <p class="checkin-hint">Or scroll down to the equipment list below and click <strong>Check In</strong> on any item.</p>
-      </div>
-    </section>
-
+  <div>
+    <p style="font-size:2rem;">⚜</p>
+    <p>This page has moved.</p>
+    <p>Redirecting you now… <a href="https://troop-equipment.web.app/1094/">click here if it doesn't happen</a>.</p>
   </div>
-
-  <!-- EQUIPMENT LIST -->
-  <main class="main-content">
-    <div class="list-header">
-      <h2>Currently Checked Out</h2>
-      <span id="itemCount" class="item-count">— items</span>
-    </div>
-
-    <div class="table-wrap">
-      <table id="equipTable">
-        <thead>
-          <tr>
-            <th>Equipment Name</th>
-            <th>Type</th>
-            <th>Checked Out By</th>
-            <th>Date Out</th>
-            <th id="actionCol" class="hidden">Action</th>
-          </tr>
-        </thead>
-        <tbody id="equipBody">
-          <tr id="loadingRow">
-            <td colspan="5" class="empty-state">Loading equipment log…</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </main>
-
-  <!-- PASSCODE MODAL -->
-  <div id="modalOverlay" class="modal-overlay hidden">
-    <div class="modal">
-      <div class="modal-icon">⚜</div>
-      <h2>Admin Access</h2>
-      <p>Enter the secret code to manage equipment.</p>
-      <input type="password" id="codeInput" placeholder="Secret code" />
-      <p id="codeError" class="code-error hidden">Incorrect code. Try again.</p>
-      <div class="modal-btns">
-        <button id="cancelModal" class="btn-secondary">Cancel</button>
-        <button id="confirmModal" class="btn-primary">Unlock</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- CONFIRM CHECK-IN MODAL -->
-  <div id="confirmOverlay" class="modal-overlay hidden">
-    <div class="modal">
-      <div class="modal-icon">✓</div>
-      <h2>Confirm Check In</h2>
-      <p id="confirmText">Are you sure you want to check in this item?</p>
-      <div class="modal-btns">
-        <button id="cancelCheckin" class="btn-secondary">Cancel</button>
-        <button id="confirmCheckin" class="btn-primary">Yes, Check In</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Firebase -->
-  <script type="module" src="script.js"></script>
 </body>
 </html>
